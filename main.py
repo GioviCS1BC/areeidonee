@@ -5,15 +5,20 @@ import requests
 
 # 1. Configurazione della pagina Streamlit
 st.set_page_config(
-    page_title="Monitor Aree Idonee & PNIEC Regioni",
+    page_title="Monitoraggio Obiettivi Rinnovabili Regioni",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-st.title("🗺️ Mappa Italia: Scostamento Target PNIEC e Aree Idonee")
-st.markdown("Seleziona una regione sulla mappa o dal menu per visualizzare l'appartenenza politica del Presidente, lo scostamento dal target in MW e la normativa sulle aree idonee.")
+# Nuovi titoli e descrizioni più chiari per l'utente
+st.title("🗺️ Mappa Italia: Corsa alle Rinnovabili e Decreto Aree Idonee")
+st.markdown(
+    "Questa mappa interattiva mostra in tempo reale **chi è in ritardo e chi è in anticipo** "
+    "sull'installazione di nuovi impianti a fonti rinnovabili (fotovoltaico ed eolico) "
+    "rispetto agli obiettivi vincolanti fissati per ciascuna regione."
+)
 
-# 2. Download dinamico del GeoJSON delle regioni italiane (ISTAT/OpenPolis)
+# 2. Download dinamico del GeoJSON
 @st.cache_data
 def load_geojson():
     url = "https://raw.githubusercontent.com/openpolis/geojson-italy/master/geojson/limits_IT_regions.geojson"
@@ -22,7 +27,7 @@ def load_geojson():
 
 geojson_data = load_geojson()
 
-# 3. Struttura Dati Aggiornata con Tabella Terna (Valori in MW)
+# 3. Struttura Dati (Tabella Terna)
 data = {
     "regione": [
         "Abruzzo", "Basilicata", "Calabria", "Campania", "Emilia-Romagna", 
@@ -60,22 +65,29 @@ data = {
 
 df = pd.DataFrame(data)
 
-# 4. Sidebar per selezione manuale alternativa
-st.sidebar.header("🔍 Filtri & Selezione")
-regione_selezionata_sidebar = st.sidebar.selectbox(
-    "Seleziona direttamente una Regione:",
-    options=["Tutte"] + list(df["regione"].unique())
+# Indicatore complessivo Italia (Dato aggregato da Terna)
+totale_delta_italia = 940 # Valore esatto preso dalla tabella "Totale Italia"
+st.info(
+    f"🇮🇹 **Situazione Nazionale:** L'Italia nel suo complesso ha installato **29.063 MW** dall'inizio del 2021. "
+    f"Rispetto al target atteso ad oggi, il Paese è attualmente **in anticipo di {totale_delta_italia} MW** sulla tabella di marcia del PNIEC."
 )
 
-# 5. Costruzione Mappa Choropleth Plotly con Scala Divergente (Rosso-Verde)
+# 4. Sidebar
+st.sidebar.header("🔍 Filtri & Selezione")
+regione_selezionata_sidebar = st.sidebar.selectbox(
+    "Cerca o seleziona una Regione:",
+    options=["Nessuna"] + list(df["regione"].unique())
+)
+
+# 5. Costruzione Mappa
 fig = px.choropleth_mapbox(
     df,
     geojson=geojson_data,
     locations="regione",
     featureidkey="properties.reg_name",
     color="delta_mw",
-    color_continuous_scale="RdYlGn",     # Scala da Rosso a Verde
-    color_continuous_midpoint=0,         # Forza lo zero al centro della scala (giallo/bianco)
+    color_continuous_scale="RdYlGn",
+    color_continuous_midpoint=0,
     mapbox_style="carto-positron",
     zoom=4.8,
     center={"lat": 41.9, "lon": 12.5},
@@ -84,15 +96,13 @@ fig = px.choropleth_mapbox(
     hover_data={
         "presidente": True,
         "delta_mw": True,
-        "installato_mw": True,
-        "target_mw": True,
+        "installato_mw": False,
+        "target_mw": False,
         "regione": False
     },
     labels={
         "delta_mw": "Scostamento dal Target (MW)",
-        "presidente": "Presidente",
-        "installato_mw": "Delta Installato [MW]",
-        "target_mw": "Target Aree Idonee [MW]"
+        "presidente": "Governatore"
     }
 )
 
@@ -106,7 +116,6 @@ fig.update_layout(
 col_map, col_details = st.columns([1.3, 1])
 
 with col_map:
-    st.subheader("Mappa Italia - Scostamento Target (MW)")
     map_selection = st.plotly_chart(
         fig, 
         use_container_width=True, 
@@ -114,7 +123,7 @@ with col_map:
         selection_mode="points"
     )
 
-# 7. Intercettazione della selezione
+# 7. Intercettazione Selezione
 selected_region_name = None
 
 if map_selection and "selection" in map_selection and map_selection["selection"]["points"]:
@@ -122,60 +131,74 @@ if map_selection and "selection" in map_selection and map_selection["selection"]
     if "location" in point:
         selected_region_name = point["location"]
 
-if regione_selezionata_sidebar != "Tutte":
+if regione_selezionata_sidebar != "Nessuna":
     selected_region_name = regione_selezionata_sidebar
 
-# 8. Visualizzazione delle Informazioni Dettagliate
+# 8. Visualizzazione Dettagli o Spiegazione Utente
 with col_details:
-    st.subheader("📋 Scheda Informativa Regione")
-    
     if selected_region_name:
+        # Se l'utente ha selezionato una regione, mostriamo i dati
         row = df[df["regione"] == selected_region_name].iloc[0]
         
-        st.markdown(f"### **{row['regione']}**")
+        st.markdown(f"### **Dettaglio: {row['regione']}**")
         
-        # INFO 1: Appartenenza Politica
-        st.info(
-            f"**1. Presidente & Politica**\n\n"
-            f"👤 **Presidente:** {row['presidente']}\n\n"
-            f"🏛️ **Schieramento:** {row['coalizione']}"
+        # Appartenenza Politica
+        st.write(
+            f"👤 **Presidente:** {row['presidente']} "
+            f"(*( {row['coalizione']} )*)"
         )
+        st.write("---")
         
-        # INFO 2: Scostamento in MW (Verde per anticipo, Rosso per ritardo)
+        # Scostamento in MW
         delta_val = row['delta_mw']
         if delta_val >= 0:
             st.success(
-                f"**2. Avanzamento PNIEC (Dati Terna)**\n\n"
+                f"**Avanzamento Nuove Rinnovabili**\n\n"
                 f"✅ **In anticipo:** `+{delta_val} MW` rispetto al target progressivo\n\n"
-                f"📊 **Target Periodo:** {row['target_mw']} MW | **Installato Netto:** {row['installato_mw']} MW"
+                f"📊 **Cosa doveva fare:** Installare {row['target_mw']} MW\n\n"
+                f"📈 **Cosa ha fatto:** Installati {row['installato_mw']} MW"
             )
         else:
             st.error(
-                f"**2. Avanzamento PNIEC (Dati Terna)**\n\n"
+                f"**Avanzamento Nuove Rinnovabili**\n\n"
                 f"⚠️ **In ritardo:** `{delta_val} MW` rispetto al target progressivo\n\n"
-                f"📊 **Target Periodo:** {row['target_mw']} MW | **Installato Netto:** {row['installato_mw']} MW"
+                f"📊 **Cosa doveva fare:** Installare {row['target_mw']} MW\n\n"
+                f"📉 **Cosa ha fatto:** Installati {row['installato_mw']} MW"
             )
-        
-        # INFO 3: Placeholder Legge Regionale
-        st.write(
-            f"**3. Legge Regionale Aree Idonee**\n\n"
-            f"🔗 *(I link alle normative andranno mappati separatamente per le singole regioni)*"
-        )
+            
+        st.write("---")
+        st.write("🔗 *Riferimento normativo Aree Idonee in fase di aggiornamento regionale.*")
         
     else:
-        st.write("👈 **Clicca su una regione nella mappa** oppure selezionala dal menu a sinistra per visualizzare i dettagli.")
+        # Se nessuna regione è selezionata, spieghiamo come leggere la dashboard
+        st.markdown("### Come leggere i dati")
+        st.write(
+            "I colori sulla mappa indicano lo scostamento tra quanto la singola regione avrebbe "
+            "dovuto installare fino ad oggi e quanto ha effettivamente realizzato:"
+        )
+        
+        st.info(
+            "🟢 **I colori verdi** indicano le regioni virtuose: hanno già installato "
+            "più Megawatt (MW) di quelli richiesti dalla loro quota progressiva."
+        )
+        st.warning(
+            "🔴 **I colori rossi** indicano le regioni in difficoltà: sono indietro con "
+            "le installazioni rispetto al percorso assegnato dallo Stato."
+        )
+        
+        st.markdown("👈 **Clicca su una regione specifica sulla mappa** per scoprire chi la governa e i suoi numeri esatti.")
 
 # 9. Tabella Generale
 st.markdown("---")
-with st.expander("📊 Visualizza i dati Terna completi delle 20 regioni"):
+with st.expander("📊 Tabella analitica completa delle 20 regioni (Dati Terna)"):
     st.dataframe(
         df[["regione", "presidente", "installato_mw", "target_mw", "delta_mw"]],
         column_config={
             "regione": "Regione",
             "presidente": "Presidente",
-            "installato_mw": st.column_config.NumberColumn("Installato gen 21-lug 26 (MW)", format="%d MW"),
-            "target_mw": st.column_config.NumberColumn("Target Aree Idonee (MW)", format="%d MW"),
-            "delta_mw": st.column_config.NumberColumn("Delta Scostamento (MW)", format="%d MW")
+            "installato_mw": st.column_config.NumberColumn("Installato Reale (MW)", format="%d MW"),
+            "target_mw": st.column_config.NumberColumn("Target Previsto (MW)", format="%d MW"),
+            "delta_mw": st.column_config.NumberColumn("Scostamento (MW)", format="%d MW")
         },
         use_container_width=True,
         hide_index=True
