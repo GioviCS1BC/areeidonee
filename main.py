@@ -10,8 +10,8 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-st.title("🗺️ Mappa Italia: Aree Idonee, PNIEC e Politica Regionale")
-st.markdown("Seleziona una regione sulla mappa o dal menu per visualizzare l'appartenenza politica del Presidente, il gap di GW rispetto agli obiettivi PNIEC e la normativa sulle aree idonee.")
+st.title("🗺️ Mappa Italia: Scostamento Target PNIEC e Aree Idonee")
+st.markdown("Seleziona una regione sulla mappa o dal menu per visualizzare l'appartenenza politica del Presidente, lo scostamento dal target in MW e la normativa sulle aree idonee.")
 
 # 2. Download dinamico del GeoJSON delle regioni italiane (ISTAT/OpenPolis)
 @st.cache_data
@@ -22,60 +22,43 @@ def load_geojson():
 
 geojson_data = load_geojson()
 
-# 3. Struttura Dati con le 20 Regioni
-# (Nota: I dati sui GW e i link alle leggi possono essere aggiornati nel tempo)
+# 3. Struttura Dati Aggiornata con Tabella Terna (Valori in MW)
 data = {
     "regione": [
-        "Lombardia", "Lazio", "Campania", "Sicilia", "Veneto", 
-        "Emilia-Romagna", "Piemonte", "Puglia", "Toscana", "Calabria", 
-        "Sardegna", "Liguria", "Marche", "Abruzzo", "Friuli Venezia Giulia", 
-        "Trentino-Alto Adige/Südtirol", "Umbria", "Basilicata", "Molise", "Valle d'Aosta/Vallée d'Aoste"
+        "Abruzzo", "Basilicata", "Calabria", "Campania", "Emilia-Romagna", 
+        "Friuli Venezia Giulia", "Lazio", "Liguria", "Lombardia", "Marche", 
+        "Molise", "Piemonte", "Puglia", "Sardegna", "Sicilia", "Toscana", 
+        "Trentino-Alto Adige/Südtirol", "Umbria", "Valle d'Aosta/Vallée d'Aoste", "Veneto"
     ],
     "presidente": [
-        "Attilio Fontana", "Francesco Rocca", "Vincenzo De Luca", "Renato Schifani", "Luca Zaia",
-        "Michele De Pascale", "Alberto Cirio", "Michele Emiliano", "Eugenio Giani", "Roberto Occhiuto",
-        "Alessandra Todde", "Marco Bucci", "Francesco Acquaroli", "Marco Marsilio", "Massimiliano Fedriga",
-        "Arno Kompatscher / Maurizio Fugatti", "Stefania Proietti", "Vito Bardi", "Francesco Roberti", "Renzo Testolin"
+        "Marco Marsilio", "Vito Bardi", "Roberto Occhiuto", "Vincenzo De Luca", "Michele De Pascale",
+        "Massimiliano Fedriga", "Francesco Rocca", "Marco Bucci", "Attilio Fontana", "Francesco Acquaroli",
+        "Francesco Roberti", "Alberto Cirio", "Michele Emiliano", "Alessandra Todde", "Renato Schifani", "Eugenio Giani",
+        "Arno Kompatscher / Maurizio Fugatti", "Stefania Proietti", "Renzo Testolin", "Luca Zaia"
     ],
     "coalizione": [
-        "Centrodestra (Lega)", "Centrodestra (FdI)", "Centrosinistra (PD)", "Centrodestra (FI)", "Centrodestra (Lega)",
-        "Centrosinistra (PD)", "Centrodestra (FI)", "Centrosinistra (PD)", "Centrosinistra (PD)", "Centrodestra (FI)",
-        "Centrosinistra (M5S/PD)", "Centrodestra (Civica/CDX)", "Centrodestra (FdI)", "Centrodestra (FdI)", "Centrodestra (Lega)",
-        "Autonomisti / Centrodestra", "Centrosinistra (Civica/CSX)", "Centrodestra (FI)", "Centrodestra (FI)", "Autonomisti (UV)"
+        "Centrodestra", "Centrodestra", "Centrodestra", "Centrosinistra", "Centrosinistra",
+        "Centrodestra", "Centrodestra", "Centrodestra", "Centrodestra", "Centrodestra",
+        "Centrodestra", "Centrodestra", "Centrosinistra", "Centrosinistra", "Centrodestra", "Centrosinistra",
+        "Autonomisti / Centrodestra", "Centrosinistra", "Autonomisti", "Centrodestra"
     ],
-    "orientamento": [
-        "Centrodestra", "Centrodestra", "Centrosinistra", "Centrodestra", "Centrodestra",
-        "Centrosinistra", "Centrodestra", "Centrosinistra", "Centrosinistra", "Centrodestra",
-        "Centrosinistra", "Centrodestra", "Centrodestra", "Centrodestra", "Centrodestra",
-        "Autonomisti", "Centrosinistra", "Centrodestra", "Centrodestra", "Autonomisti"
+    "delta_mw": [
+        -124, -182, -447, 91, 65, 
+        314, 1428, -102, 697, -125, 
+        -181, 422, -267, -599, -3, -302, 
+        95, -193, -23, 377
     ],
-    "target_pniec_gw": [8.5, 6.2, 5.0, 10.4, 6.3, 6.3, 5.8, 7.2, 4.1, 4.5, 6.2, 1.5, 2.8, 2.4, 2.1, 1.8, 1.6, 2.2, 0.9, 0.4],
-    "installato_attuale_gw": [4.2, 2.4, 2.8, 5.1, 3.3, 3.9, 3.1, 6.2, 2.2, 2.9, 2.3, 0.5, 1.4, 1.2, 1.1, 1.2, 0.9, 1.8, 0.7, 0.2],
-    "legge_aree_idonee_nome": [
-        "Proposta L.R. Aree Idonee Lombardia", "Delibera Giunta Lazio FER", "D.D. Campania Aree Idonee",
-        "DDG Sicilia Aree Idonee", "L.R. Veneto Aree Idonee", "L.R. 5/2026 Emilia-Romagna",
-        "L.R. Piemonte Aree Idonee", "DGR Puglia FER", "L.R. Toscana Aree Idonee",
-        "DGR Calabria Aree Idonee", "L.R. 5/2024 (Sardegna)", "L.R. Liguria FER",
-        "L.R. Marche Aree Idonee", "L.R. Abruzzo Aree Idonee", "L.R. FVG Aree Idonee",
-        "Delibera Prov. Autonoma Aree Idonee", "L.R. Umbria Aree Idonee", "L.R. Basilicata FER",
-        "L.R. Molise Aree Idonee", "L.R. VdA Aree Idonee"
+    "installato_mw": [
+        638, 697, 613, 1640, 2297, 1003, 3055, 238, 3923, 701, 
+        156, 2262, 2610, 1336, 3393, 965, 543, 341, 40, 2612
     ],
-    "legge_aree_idonee_url": [
-        "https://www.regione.lombardia.it", "https://www.regione.lazio.it", "https://www.regione.campania.it",
-        "https://www.regione.sicilia.it", "https://www.regione.veneto.it", "https://www.regione.emilia-romagna.it",
-        "https://www.regione.piemonte.it", "https://www.regione.puglia.it", "https://www.regione.toscana.it",
-        "https://www.regione.calabria.it", "https://www.regione.sardegna.it", "https://www.regione.liguria.it",
-        "https://www.regione.marche.it", "https://www.regione.abruzzo.it", "https://www.regione.fvg.it",
-        "https://www.provincia.tn.it", "https://www.regione.umbria.it", "https://www.regione.basilicata.it",
-        "https://www.regione.molise.it", "https://www.regione.vda.it"
+    "target_mw": [
+        763, 879, 1061, 1548, 2232, 689, 1628, 340, 3226, 825, 
+        337, 1840, 2876, 1935, 3396, 1267, 449, 534, 63, 2236
     ]
 }
 
 df = pd.DataFrame(data)
-
-# Calcolo del ritardo/gap in GW rispetto al PNIEC
-df["ritardo_pniec_gw"] = (df["target_pniec_gw"] - df["installato_attuale_gw"]).round(2)
-df["percentuale_completamento"] = ((df["installato_attuale_gw"] / df["target_pniec_gw"]) * 100).round(1)
 
 # 4. Sidebar per selezione manuale alternativa
 st.sidebar.header("🔍 Filtri & Selezione")
@@ -84,30 +67,32 @@ regione_selezionata_sidebar = st.sidebar.selectbox(
     options=["Tutte"] + list(df["regione"].unique())
 )
 
-# 5. Costruzione Mappa Choropleth Plotly
+# 5. Costruzione Mappa Choropleth Plotly con Scala Divergente (Rosso-Verde)
 fig = px.choropleth_mapbox(
     df,
     geojson=geojson_data,
     locations="regione",
     featureidkey="properties.reg_name",
-    color="ritardo_pniec_gw",
-    color_continuous_scale="Reds",
+    color="delta_mw",
+    color_continuous_scale="RdYlGn",     # Scala da Rosso a Verde
+    color_continuous_midpoint=0,         # Forza lo zero al centro della scala (giallo/bianco)
     mapbox_style="carto-positron",
     zoom=4.8,
     center={"lat": 41.9, "lon": 12.5},
-    opacity=0.7,
+    opacity=0.8,
     hover_name="regione",
     hover_data={
         "presidente": True,
-        "coalizione": True,
-        "ritardo_pniec_gw": ":.2f GW",
-        "target_pniec_gw": ":.2f GW",
+        "delta_mw": True,
+        "installato_mw": True,
+        "target_mw": True,
         "regione": False
     },
     labels={
-        "ritardo_pniec_gw": "Gap PNIEC (GW)",
+        "delta_mw": "Scostamento dal Target (MW)",
         "presidente": "Presidente",
-        "coalizione": "Coalizione"
+        "installato_mw": "Delta Installato [MW]",
+        "target_mw": "Target Aree Idonee [MW]"
     }
 )
 
@@ -117,11 +102,11 @@ fig.update_layout(
     clickmode="event+select"
 )
 
-# 6. Layout a colonne (Mappa a sinistra, Dettaglio 3 Info a destra)
+# 6. Layout a colonne
 col_map, col_details = st.columns([1.3, 1])
 
 with col_map:
-    st.subheader("Mappa Italia - Ritardo Rinnovabili (GW)")
+    st.subheader("Mappa Italia - Scostamento Target (MW)")
     map_selection = st.plotly_chart(
         fig, 
         use_container_width=True, 
@@ -129,20 +114,18 @@ with col_map:
         selection_mode="points"
     )
 
-# 7. Intercettazione della selezione (Click sulla mappa o Sidebar)
+# 7. Intercettazione della selezione
 selected_region_name = None
 
-# Verifica se l'utente ha cliccato sulla mappa
 if map_selection and "selection" in map_selection and map_selection["selection"]["points"]:
     point = map_selection["selection"]["points"][0]
     if "location" in point:
         selected_region_name = point["location"]
 
-# Se l'utente usa il menu sidebar, la sidebar ha la precedenza
 if regione_selezionata_sidebar != "Tutte":
     selected_region_name = regione_selezionata_sidebar
 
-# 8. Visualizzazione delle 3 Informazioni Dettagliate
+# 8. Visualizzazione delle Informazioni Dettagliate
 with col_details:
     st.subheader("📋 Scheda Informativa Regione")
     
@@ -155,40 +138,44 @@ with col_details:
         st.info(
             f"**1. Presidente & Politica**\n\n"
             f"👤 **Presidente:** {row['presidente']}\n\n"
-            f"🏛️ **Coalizione / Partito:** {row['coalizione']}"
+            f"🏛️ **Schieramento:** {row['coalizione']}"
         )
         
-        # INFO 2: Ritardo PNIEC in GW
-        st.warning(
-            f"**2. Ritardo PNIEC (Rinnovabili)**\n\n"
-            f"⚠️ **Gap da installare:** `{row['ritardo_pniec_gw']} GW` mancanti al 2030\n\n"
-            f"📊 **Target totale PNIEC:** {row['target_pniec_gw']} GW | **Attuale:** {row['installato_attuale_gw']} GW\n\n"
-            f"📈 **Avanzamento:** {row['percentuale_completamento']}%"
-        )
+        # INFO 2: Scostamento in MW (Verde per anticipo, Rosso per ritardo)
+        delta_val = row['delta_mw']
+        if delta_val >= 0:
+            st.success(
+                f"**2. Avanzamento PNIEC (Dati Terna)**\n\n"
+                f"✅ **In anticipo:** `+{delta_val} MW` rispetto al target progressivo\n\n"
+                f"📊 **Target Periodo:** {row['target_mw']} MW | **Installato Netto:** {row['installato_mw']} MW"
+            )
+        else:
+            st.error(
+                f"**2. Avanzamento PNIEC (Dati Terna)**\n\n"
+                f"⚠️ **In ritardo:** `{delta_val} MW` rispetto al target progressivo\n\n"
+                f"📊 **Target Periodo:** {row['target_mw']} MW | **Installato Netto:** {row['installato_mw']} MW"
+            )
         
-        # INFO 3: Link Legge Regionale Aree Idonee
-        st.success(
+        # INFO 3: Placeholder Legge Regionale
+        st.write(
             f"**3. Legge Regionale Aree Idonee**\n\n"
-            f"📜 **Normativa:** {row['legge_aree_idonee_nome']}\n\n"
-            f"🔗 [Apri il testo ufficiale / Portale regionale]({row['legge_aree_idonee_url']})"
+            f"🔗 *(I link alle normative andranno mappati separatamente per le singole regioni)*"
         )
         
     else:
-        st.write("👈 **Clicca su una regione nella mappa** oppure selezionala dal menu a sinistra per visualizzare i 3 dettagli.")
+        st.write("👈 **Clicca su una regione nella mappa** oppure selezionala dal menu a sinistra per visualizzare i dettagli.")
 
-# 9. Tabella Generale Comparativa in fondo alla pagina
+# 9. Tabella Generale
 st.markdown("---")
-with st.expander("📊 Visualizza la tabella completa delle 20 regioni"):
+with st.expander("📊 Visualizza i dati Terna completi delle 20 regioni"):
     st.dataframe(
-        df[["regione", "presidente", "coalizione", "target_pniec_gw", "installato_attuale_gw", "ritardo_pniec_gw", "legge_aree_idonee_nome"]],
+        df[["regione", "presidente", "installato_mw", "target_mw", "delta_mw"]],
         column_config={
             "regione": "Regione",
             "presidente": "Presidente",
-            "coalizione": "Schieramento",
-            "target_pniec_gw": st.column_config.NumberColumn("Target PNIEC (GW)", format="%.1f GW"),
-            "installato_attuale_gw": st.column_config.NumberColumn("Installato (GW)", format="%.1f GW"),
-            "ritardo_pniec_gw": st.column_config.NumberColumn("Ritardo (GW)", format="%.2f GW"),
-            "legge_aree_idonee_nome": "Riferimento Normativo"
+            "installato_mw": st.column_config.NumberColumn("Installato gen 21-lug 26 (MW)", format="%d MW"),
+            "target_mw": st.column_config.NumberColumn("Target Aree Idonee (MW)", format="%d MW"),
+            "delta_mw": st.column_config.NumberColumn("Delta Scostamento (MW)", format="%d MW")
         },
         use_container_width=True,
         hide_index=True
