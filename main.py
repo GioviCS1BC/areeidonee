@@ -188,7 +188,56 @@ with col_details:
         )
         
         st.markdown("👈 **Clicca su una regione specifica sulla mappa** per scoprire chi la governa e i suoi numeri esatti.")
+# --- NUOVA SEZIONE: BILANCIO POLITICO ---
+st.markdown("---")
+st.subheader("⚖️ Bilancio dell'Avanzamento per Schieramento Politico")
+st.write("Aggregazione del ritardo o anticipo complessivo (in MW) in base al colore politico della Giunta Regionale.")
 
+# 1. Creiamo una categorizzazione macro
+def categorizza_schieramento(coalizione):
+    if "Centrodestra" in coalizione:
+        return "Centrodestra"
+    elif "Centrosinistra" in coalizione:
+        return "Centrosinistra"
+    else:
+        return "Autonomisti"
+
+df["macro_area_politica"] = df["coalizione"].apply(categorizza_schieramento)
+
+# 2. Sommiamo il delta MW per ogni macro area
+bilancio = df.groupby("macro_area_politica")["delta_mw"].sum().reset_index()
+
+# 3. Estraiamo i valori esatti in modo sicuro
+val_cdx = bilancio.loc[bilancio['macro_area_politica'] == 'Centrodestra', 'delta_mw'].sum()
+val_csx = bilancio.loc[bilancio['macro_area_politica'] == 'Centrosinistra', 'delta_mw'].sum()
+val_aut = bilancio.loc[bilancio['macro_area_politica'] == 'Autonomisti', 'delta_mw'].sum()
+
+# 4. Creiamo tre metriche visive affiancate
+col_cdx, col_csx, col_aut = st.columns(3)
+
+with col_cdx:
+    st.metric(
+        label="🔵 Regioni di Centrodestra (13)", 
+        value=f"{val_cdx} MW",
+        delta="In anticipo" if val_cdx >= 0 else "In ritardo",
+        delta_color="normal" if val_cdx >= 0 else "inverse"
+    )
+
+with col_csx:
+    st.metric(
+        label="🔴 Regioni di Centrosinistra (6)", 
+        value=f"{val_csx} MW",
+        delta="In anticipo" if val_csx >= 0 else "In ritardo",
+        delta_color="normal" if val_csx >= 0 else "inverse"
+    )
+
+with col_aut:
+    st.metric(
+        label="⚪ Autonomisti (1)", 
+        value=f"{val_aut} MW",
+        delta="In anticipo" if val_aut >= 0 else "In ritardo",
+        delta_color="normal" if val_aut >= 0 else "inverse"
+    )
 # 9. Tabella Generale
 st.markdown("---")
 with st.expander("📊 Tabella analitica completa delle 20 regioni (Dati Terna)"):
