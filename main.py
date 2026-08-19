@@ -31,7 +31,7 @@ geojson_data = load_geojson()
 data = {
     "regione": [
         "Abruzzo", "Basilicata", "Calabria", "Campania", "Emilia-Romagna", 
-        "Friuli Venezia Giulia", "Lazio", "Liguria", "Lombardia", "Marche", 
+        "Friuli-Venezia Giulia", "Lazio", "Liguria", "Lombardia", "Marche", 
         "Molise", "Piemonte", "Puglia", "Sardegna", "Sicilia", "Toscana", 
         "Trentino-Alto Adige/Südtirol", "Umbria", "Valle d'Aosta/Vallée d'Aoste", "Veneto"
     ],
