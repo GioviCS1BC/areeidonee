@@ -15,7 +15,8 @@ st.title("🗺️ Mappa Italia: Corsa alle Rinnovabili e Decreto Aree Idonee")
 st.markdown(
     "Questa mappa interattiva mostra in tempo reale **chi è in ritardo e chi è in anticipo** "
     "sull'installazione di nuovi impianti a fonti rinnovabili (fotovoltaico ed eolico) "
-    "rispetto agli obiettivi vincolanti fissati per ciascuna regione."
+    "rispetto agli obiettivi vincolanti fissati per ciascuna regione"
+    "ultimo aggiornamento: Agosto 2026."
 )
 
 # 2. Download dinamico del GeoJSON
