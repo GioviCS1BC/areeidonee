@@ -33,7 +33,7 @@ data = {
         "Abruzzo", "Basilicata", "Calabria", "Campania", "Emilia-Romagna", 
         "Friuli-Venezia Giulia", "Lazio", "Liguria", "Lombardia", "Marche", 
         "Molise", "Piemonte", "Puglia", "Sardegna", "Sicilia", "Toscana", 
-        "Trentino-Alto Adige", "Umbria", "Valle d'Aosta", "Veneto"
+        "Trentino-Alto Adige/Südtirol", "Umbria", "Valle d'Aosta/Vallée d'Aoste", "Veneto"
     ],
     "presidente": [
         "Marco Marsilio", "Vito Bardi", "Roberto Occhiuto", "Vincenzo De Luca", "Michele De Pascale",
