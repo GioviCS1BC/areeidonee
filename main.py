@@ -10,13 +10,12 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Nuovi titoli e descrizioni più chiari per l'utente
+# Titoli e descrizioni
 st.title("🗺️ Mappa Italia: Corsa alle Rinnovabili e Decreto Aree Idonee")
 st.markdown(
     "Questa mappa interattiva mostra in tempo reale **chi è in ritardo e chi è in anticipo** "
     "sull'installazione di nuovi impianti a fonti rinnovabili (fotovoltaico ed eolico) "
-    "rispetto agli obiettivi vincolanti fissati per ciascuna regione, "
-    "ultimo aggiornamento: Rapporto Mensile Terna di Agosto 2026."
+    "rispetto agli obiettivi vincolanti fissati per ciascuna regione."
 )
 
 # 2. Download dinamico del GeoJSON
@@ -34,7 +33,7 @@ data = {
         "Abruzzo", "Basilicata", "Calabria", "Campania", "Emilia-Romagna", 
         "Friuli-Venezia Giulia", "Lazio", "Liguria", "Lombardia", "Marche", 
         "Molise", "Piemonte", "Puglia", "Sardegna", "Sicilia", "Toscana", 
-        "Trentino-Alto Adige/Südtirol", "Umbria", "Valle d'Aosta/Vallée d'Aoste", "Veneto"
+        "Trentino-Alto Adige", "Umbria", "Valle d'Aosta", "Veneto"
     ],
     "presidente": [
         "Marco Marsilio", "Vito Bardi", "Roberto Occhiuto", "Vincenzo De Luca", "Michele De Pascale",
@@ -66,27 +65,70 @@ data = {
 
 df = pd.DataFrame(data)
 
-# Indicatore complessivo Italia (Dato aggregato da Terna)
-totale_delta_italia = 940 # Valore esatto preso dalla tabella "Totale Italia"
+# Calcolo percentuale e classificazione politica
+df["delta_perc"] = ((df["delta_mw"] / df["target_mw"]) * 100).round(1)
+
+def categorizza_schieramento(coalizione):
+    if "Centrodestra" in coalizione:
+        return "Centrodestra"
+    elif "Centrosinistra" in coalizione:
+        return "Centrosinistra"
+    else:
+        return "Autonomisti"
+
+df["macro_area_politica"] = df["coalizione"].apply(categorizza_schieramento)
+
+# Indicatore complessivo Italia
+totale_delta_italia = 940
 st.info(
     f"🇮🇹 **Situazione Nazionale:** L'Italia nel suo complesso ha installato **29.063 MW** dall'inizio del 2021. "
-    f"Rispetto al target atteso ad oggi, il Paese è attualmente **in anticipo di {totale_delta_italia} MW** sulla tabella di marcia del PNIEC."
+    f"Rispetto al target atteso ad oggi, il Paese è attualmente **in anticipo di {totale_delta_italia} MW** sulla tabella di marcia."
 )
 
-# 4. Sidebar
-st.sidebar.header("🔍 Filtri & Selezione")
+# 4. Sidebar (Filtri e Opzioni)
+st.sidebar.header("🔍 Ricerca Regione")
 regione_selezionata_sidebar = st.sidebar.selectbox(
     "Cerca o seleziona una Regione:",
     options=["Nessuna"] + list(df["regione"].unique())
 )
 
-# 5. Costruzione Mappa
+st.sidebar.markdown("---")
+st.sidebar.header("⚙️ Opzioni Visualizzazione")
+tipo_visualizzazione = st.sidebar.radio(
+    "Mostra i dati sulla mappa come:",
+    options=["Valore Assoluto (MW)", "Percentuale sul Target (%)"]
+)
+
+# 5. Costruzione Mappa Dinamica
+if tipo_visualizzazione == "Valore Assoluto (MW)":
+    colonna_colore = "delta_mw"
+    etichetta_colore = "Scostamento (MW)"
+    hover_dati = {
+        "presidente": True,
+        "delta_mw": True,
+        "delta_perc": False,
+        "installato_mw": False,
+        "target_mw": False,
+        "regione": False
+    }
+else:
+    colonna_colore = "delta_perc"
+    etichetta_colore = "Scostamento (%)"
+    hover_dati = {
+        "presidente": True,
+        "delta_perc": True,
+        "delta_mw": False,
+        "installato_mw": False,
+        "target_mw": False,
+        "regione": False
+    }
+
 fig = px.choropleth_mapbox(
     df,
     geojson=geojson_data,
     locations="regione",
     featureidkey="properties.reg_name",
-    color="delta_mw",
+    color=colonna_colore,
     color_continuous_scale="RdYlGn",
     color_continuous_midpoint=0,
     mapbox_style="carto-positron",
@@ -94,15 +136,10 @@ fig = px.choropleth_mapbox(
     center={"lat": 41.9, "lon": 12.5},
     opacity=0.8,
     hover_name="regione",
-    hover_data={
-        "presidente": True,
-        "delta_mw": True,
-        "installato_mw": False,
-        "target_mw": False,
-        "regione": False
-    },
+    hover_data=hover_dati,
     labels={
-        "delta_mw": "Scostamento dal Target (MW)",
+        "delta_mw": "Scostamento (MW)",
+        "delta_perc": "Scostamento (%)",
         "presidente": "Governatore"
     }
 )
@@ -110,13 +147,15 @@ fig = px.choropleth_mapbox(
 fig.update_layout(
     margin={"r": 0, "t": 0, "l": 0, "b": 0},
     height=550,
-    clickmode="event+select"
+    clickmode="event+select",
+    coloraxis_colorbar_title_text=etichetta_colore
 )
 
 # 6. Layout a colonne
 col_map, col_details = st.columns([1.3, 1])
 
 with col_map:
+    st.subheader(f"Mappa Italia - {tipo_visualizzazione}")
     map_selection = st.plotly_chart(
         fig, 
         use_container_width=True, 
@@ -138,86 +177,69 @@ if regione_selezionata_sidebar != "Nessuna":
 # 8. Visualizzazione Dettagli o Spiegazione Utente
 with col_details:
     if selected_region_name:
-        # Se l'utente ha selezionato una regione, mostriamo i dati
         row = df[df["regione"] == selected_region_name].iloc[0]
         
         st.markdown(f"### **Dettaglio: {row['regione']}**")
         
-        # Appartenenza Politica
         st.write(
             f"👤 **Presidente:** {row['presidente']} "
             f"(*( {row['coalizione']} )*)"
         )
         st.write("---")
         
-        # Scostamento in MW
         delta_val = row['delta_mw']
+        delta_perc = row['delta_perc']
+        
         if delta_val >= 0:
             st.success(
                 f"**Avanzamento Nuove Rinnovabili**\n\n"
-                f"✅ **In anticipo:** `+{delta_val} MW` rispetto al target progressivo\n\n"
-                f"📊 **Cosa doveva fare:** Installare {row['target_mw']} MW\n\n"
-                f"📈 **Cosa ha fatto:** Installati {row['installato_mw']} MW"
+                f"✅ **In anticipo:** `+{delta_val} MW` (+{delta_perc}% sul target)\n\n"
+                f"📊 **Target progressivo:** {row['target_mw']} MW\n\n"
+                f"📈 **Installato netto:** {row['installato_mw']} MW"
             )
         else:
             st.error(
                 f"**Avanzamento Nuove Rinnovabili**\n\n"
-                f"⚠️ **In ritardo:** `{delta_val} MW` rispetto al target progressivo\n\n"
-                f"📊 **Cosa doveva fare:** Installare {row['target_mw']} MW\n\n"
-                f"📉 **Cosa ha fatto:** Installati {row['installato_mw']} MW"
+                f"⚠️ **In ritardo:** `{delta_val} MW` ({delta_perc}% sul target)\n\n"
+                f"📊 **Target progressivo:** {row['target_mw']} MW\n\n"
+                f"📉 **Installato netto:** {row['installato_mw']} MW"
             )
             
         st.write("---")
-        st.write("🔗 *Riferimento normativo Aree Idonee in fase di aggiornamento regionale.*")
+        st.write("🔗 *Riferimento normativo Aree Idonee in fase di aggiornamento.*")
         
     else:
-        # Se nessuna regione è selezionata, spieghiamo come leggere la dashboard
         st.markdown("### Come leggere i dati")
         st.write(
             "I colori sulla mappa indicano lo scostamento tra quanto la singola regione avrebbe "
-            "dovuto installare fino ad oggi e quanto ha effettivamente realizzato:"
+            "dovuto installare fino ad oggi e quanto ha effettivamente realizzato."
         )
-        
         st.info(
-            "🟢 **I colori verdi** indicano le regioni virtuose: hanno già installato "
-            "più Megawatt (MW) di quelli richiesti dalla loro quota progressiva."
+            "🟢 **I colori verdi** indicano le regioni in anticipo: hanno già installato "
+            "più Megawatt di quelli richiesti."
         )
         st.warning(
-            "🔴 **I colori rossi** indicano le regioni in difficoltà: sono indietro con "
-            "le installazioni rispetto al percorso assegnato dallo Stato."
+            "🔴 **I colori rossi** indicano le regioni in ritardo: sono indietro rispetto "
+            "al percorso assegnato dallo Stato."
         )
-        
-        st.markdown("👈 **Clicca su una regione specifica sulla mappa** per scoprire chi la governa e i suoi numeri esatti.")
+        st.markdown("👈 **Clicca su una regione sulla mappa** per i numeri esatti.")
+
 # --- NUOVA SEZIONE: BILANCIO POLITICO ---
 st.markdown("---")
 st.subheader("⚖️ Bilancio dell'Avanzamento per Schieramento Politico")
 st.write("Aggregazione del ritardo o anticipo complessivo (in MW) in base al colore politico della Giunta Regionale.")
 
-# 1. Creiamo una categorizzazione macro
-def categorizza_schieramento(coalizione):
-    if "Centrodestra" in coalizione:
-        return "Centrodestra"
-    elif "Centrosinistra" in coalizione:
-        return "Centrosinistra"
-    else:
-        return "Autonomisti"
-
-df["macro_area_politica"] = df["coalizione"].apply(categorizza_schieramento)
-
-# 2. Sommiamo il delta MW per ogni macro area
 bilancio = df.groupby("macro_area_politica")["delta_mw"].sum().reset_index()
 
-# 3. Estraiamo i valori esatti in modo sicuro
 val_cdx = bilancio.loc[bilancio['macro_area_politica'] == 'Centrodestra', 'delta_mw'].sum()
 val_csx = bilancio.loc[bilancio['macro_area_politica'] == 'Centrosinistra', 'delta_mw'].sum()
 val_aut = bilancio.loc[bilancio['macro_area_politica'] == 'Autonomisti', 'delta_mw'].sum()
 
-# 4. Creiamo tre metriche visive affiancate
 col_cdx, col_csx, col_aut = st.columns(3)
 
 with col_cdx:
     st.metric(
-        label="🔵 Regioni di Centrodestra (13)", 
+        label="🔵 Regioni di Centrodestra", 
         value=f"{val_cdx} MW",
         delta="In anticipo" if val_cdx >= 0 else "In ritardo",
         delta_color="normal" if val_cdx >= 0 else "inverse"
@@ -225,7 +247,7 @@ with col_cdx:
 
 with col_csx:
     st.metric(
-        label="🔴 Regioni di Centrosinistra (6)", 
+        label="🔴 Regioni di Centrosinistra", 
         value=f"{val_csx} MW",
         delta="In anticipo" if val_csx >= 0 else "In ritardo",
         delta_color="normal" if val_csx >= 0 else "inverse"
@@ -233,22 +255,24 @@ with col_csx:
 
 with col_aut:
     st.metric(
-        label="⚪ Autonomisti (1)", 
+        label="⚪ Autonomisti (Valle d'Aosta)", 
         value=f"{val_aut} MW",
         delta="In anticipo" if val_aut >= 0 else "In ritardo",
         delta_color="normal" if val_aut >= 0 else "inverse"
     )
+
 # 9. Tabella Generale
 st.markdown("---")
 with st.expander("📊 Tabella analitica completa delle 20 regioni (Dati Terna)"):
     st.dataframe(
-        df[["regione", "presidente", "installato_mw", "target_mw", "delta_mw"]],
+        df[["regione", "presidente", "installato_mw", "target_mw", "delta_mw", "delta_perc"]],
         column_config={
             "regione": "Regione",
             "presidente": "Presidente",
             "installato_mw": st.column_config.NumberColumn("Installato Reale (MW)", format="%d MW"),
             "target_mw": st.column_config.NumberColumn("Target Previsto (MW)", format="%d MW"),
-            "delta_mw": st.column_config.NumberColumn("Scostamento (MW)", format="%d MW")
+            "delta_mw": st.column_config.NumberColumn("Scostamento (MW)", format="%d MW"),
+            "delta_perc": st.column_config.NumberColumn("Scostamento (%)", format="%.1f %%")
         },
         use_container_width=True,
         hide_index=True
