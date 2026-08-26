@@ -1,4 +1,6 @@
+streamlit
 pandas
-plotly>=5.0.0
+plotly>=5.23.0
 requests
 openpyxl
+numpy<2.0.0
