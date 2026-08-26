@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import requests
+import openpyxl
 
 # 1. Configurazione della pagina Streamlit
 st.set_page_config(
