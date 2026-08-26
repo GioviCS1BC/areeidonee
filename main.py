@@ -5,7 +5,7 @@ import requests
 
 st.set_page_config(page_title="Monitoraggio Rinnovabili", layout="wide")
 
-st.title("🗺️ Avanzamento Rinnovabili: Mappa e Andamento Politico")
+st.title("🗺️ Avanzamento Rinnovabili")
 st.markdown("Mappa del ritardo/anticipo sul target PNIEC (dati più recenti) e confronto storico tra coalizioni.")
 
 # 1. Caricamento GeoJSON
