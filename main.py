@@ -31,7 +31,7 @@ geojson_data = load_geojson()
 @st.cache_data
 def load_historical_data():
     try:
-        df_hist = pd.read_excel('prova terna.xlsx')
+        df_hist = pd.read_excel('provaterna.xlsx')
         df_hist = df_hist.rename(columns={
             'REGIONE': 'regione',
             'delta (MW)': 'delta_mw',
