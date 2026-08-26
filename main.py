@@ -29,14 +29,22 @@ geojson_data = load_geojson()
 
 # 3. Caricamento dati storici da Excel
 @st.cache_data
+# 3. Caricamento dati storici da Excel
+@st.cache_data
 def load_historical_data():
     try:
-        df_hist = pd.read_excel('provaterna.xlsx')
+        df_hist = pd.read_excel('prova terna.xlsx')
         df_hist = df_hist.rename(columns={
             'REGIONE': 'regione',
             'delta (MW)': 'delta_mw',
             'data': 'data_rilevazione'
         })
+        
+        # ELIMINA eventuali righe completamente vuote provenienti dall'Excel
+        df_hist = df_hist.dropna(subset=['regione'])
+        
+        # FORZA la colonna regione a essere testo (stringa) per evitare errori
+        df_hist['regione'] = df_hist['regione'].astype(str)
         
         # Mappatura per far combaciare i nomi dell'Excel con quelli ufficiali ISTAT/GeoJSON
         mappa_nomi = {
@@ -46,8 +54,8 @@ def load_historical_data():
             "VALLE D'AOSTA": "Valle d'Aosta/Vallée d'Aoste"
         }
         
-        df_hist['regione'] = df_hist['regione'].apply(lambda x: x.title() if str(x).upper() not in mappa_nomi else x)
-        df_hist['regione'] = df_hist['regione'].apply(lambda x: mappa_nomi.get(str(x).upper(), x))
+        df_hist['regione'] = df_hist['regione'].apply(lambda x: x.title() if x.upper() not in mappa_nomi else x)
+        df_hist['regione'] = df_hist['regione'].apply(lambda x: mappa_nomi.get(x.upper(), x))
         
         # Correzioni extra per sicurezza sul title()
         df_hist['regione'] = df_hist['regione'].replace({
@@ -59,7 +67,6 @@ def load_historical_data():
         return df_hist
     except FileNotFoundError:
         return None
-
 df_storico = load_historical_data()
 
 # 4. Struttura Dati (Tabella Terna Attuale)
