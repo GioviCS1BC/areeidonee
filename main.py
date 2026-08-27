@@ -19,13 +19,32 @@ st.markdown(
 )
 
 # 2. Download dinamico del GeoJSON (VERSIONE LEGGERA ANTI-CRASH)
+# 1. Caricamento GeoJSON Semplificato e Correzione Nomi
 @st.cache_data
 def load_geojson():
     url = "https://raw.githubusercontent.com/stefanocudini/leaflet-geojson-selector/master/examples/italy-regions.json"
-    response = requests.get(url)
-    return response.json()
-
-geojson_data = load_geojson()
+    geojson = requests.get(url).json()
+    
+    # Dizionario per tradurre i nomi "sporchi" del JSON in quelli esatti del nostro DataFrame
+    mappa_correzione = {
+        "abruzzo": "Abruzzo", "basilicata": "Basilicata", "calabria": "Calabria",
+        "campania": "Campania", "emilia romagna": "Emilia-Romagna", "emilia-romagna": "Emilia-Romagna",
+        "friuli venezia giulia": "Friuli-Venezia Giulia", "friuli-venezia giulia": "Friuli-Venezia Giulia",
+        "lazio": "Lazio", "liguria": "Liguria", "lombardia": "Lombardia",
+        "marche": "Marche", "molise": "Molise", "piemonte": "Piemonte",
+        "puglia": "Puglia", "sardegna": "Sardegna", "sicilia": "Sicilia",
+        "toscana": "Toscana", "trentino alto adige": "Trentino-Alto Adige",
+        "trentino-alto adige": "Trentino-Alto Adige", "umbria": "Umbria",
+        "valle d'aosta": "Valle d'Aosta", "valle d aosta": "Valle d'Aosta", "veneto": "Veneto"
+    }
+    
+    # Cicliamo dentro il file geografico e sovrascriviamo i nomi con quelli corretti
+    for feature in geojson["features"]:
+        nome_json = feature["properties"]["name"].lower().strip()
+        if nome_json in mappa_correzione:
+            feature["properties"]["name"] = mappa_correzione[nome_json]
+            
+    return geojson
 
 # 3. Struttura Dati (Tabella Terna)
 data = {
