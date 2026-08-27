@@ -5,8 +5,8 @@ import requests
 
 # 1. Configurazione
 st.set_page_config(page_title="Monitoraggio Rinnovabili", layout="wide", initial_sidebar_state="expanded")
-st.title("🗺️ Mappa Italia: Corsa alle Rinnovabili e Decreto Aree Idonee")
-st.markdown("Questa mappa interattiva mostra in tempo reale chi è in ritardo e chi è in anticipo rispetto agli obiettivi vincolanti fissati per ciascuna regione.")
+st.title("Corsa all'energia pulita")
+st.markdown("Questa mappa interattiva mostra in tempo reale chi è in ritardo e chi è in anticipo rispetto agli obiettivi vincolanti fissati per ciascuna regione per questo mese.")
 
 # 2. GeoJSON Originale di OpenPolis
 @st.cache_data
