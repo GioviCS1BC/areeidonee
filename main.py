@@ -122,7 +122,7 @@ with col_details:
             
     else:
         st.markdown("### 👈 Come leggere i dati")
-        st.write("Clicca su una regione sulla mappa per vederne i numeri esatti.")
+        st.write("Clicca su una regione sulla mappa per vederne i numeri esatti riferiti a questo mese.")
         st.info("🟢 **Verde:** in anticipo sul target.")
         st.warning("🔴 **Rosso:** in ritardo sul target.")
 
