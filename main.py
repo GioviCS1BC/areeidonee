@@ -6,8 +6,9 @@ import requests
 # 1. Configurazione
 st.set_page_config(page_title="Monitoraggio Rinnovabili", layout="wide", initial_sidebar_state="expanded")
 st.title("🗺️ Mappa Italia: Corsa alle Rinnovabili e Decreto Aree Idonee")
+st.markdown("Questa mappa interattiva mostra in tempo reale chi è in ritardo e chi è in anticipo rispetto agli obiettivi vincolanti fissati per ciascuna regione.")
 
-# 2. GeoJSON Originale (Quello che funzionava)
+# 2. GeoJSON Originale di OpenPolis
 @st.cache_data
 def load_geojson():
     url = "https://raw.githubusercontent.com/openpolis/geojson-italy/master/geojson/limits_IT_regions.geojson"
@@ -59,62 +60,37 @@ def categorizza_schieramento(coalizione):
 
 df["macro_area_politica"] = df["coalizione"].apply(categorizza_schieramento)
 
-# 4. Elaborazione Dati Storici (Sicura)
-@st.cache_data
-def load_historical_data():
-    try:
-        df_hist = pd.read_excel('prova terna.xlsx')
-        df_hist = df_hist.rename(columns={'REGIONE': 'regione', 'delta (MW)': 'delta_mw', 'data': 'data_rilevazione'})
-        df_hist = df_hist.dropna(subset=['regione', 'delta_mw'])
-        df_hist['regione'] = df_hist['regione'].astype(str).str.upper().strip()
-        
-        mappa_nomi = {
-            "EMILIA ROMAGNA": "Emilia-Romagna",
-            "FRIULI VENEZIA GIULIA": "Friuli-Venezia Giulia",
-            "TRENTINO ALTO ADIGE": "Trentino-Alto Adige/Südtirol",
-            "VALLE D'AOSTA": "Valle d'Aosta/Vallée d'Aoste"
-        }
-        df_hist['regione'] = df_hist['regione'].apply(lambda x: mappa_nomi.get(x, x.title()))
-        
-        # Mappatura politica
-        mappa_politica = dict(zip(df['regione'], df['macro_area_politica']))
-        df_hist['macro_area_politica'] = df_hist['regione'].map(mappa_politica)
-        
-        return df_hist
-    except Exception:
-        return None
-
-df_storico = load_historical_data()
-
-# 5. Interfaccia Sidebar
+# 4. Interfaccia Sidebar
 st.sidebar.header("⚙️ Opzioni Visualizzazione")
 tipo_visualizzazione = st.sidebar.radio(
     "Mostra i dati sulla mappa come:",
     options=["Valore Assoluto (MW)", "Percentuale sul Target (%)"]
 )
 
-# 6. Mappa Originale Funzionante
-# 6. Mappa Base (Universale e Anti-Crash)
+# 5. Mappa Leggera (px.choropleth base)
 colonna_colore = "delta_mw" if tipo_visualizzazione == "Valore Assoluto (MW)" else "delta_perc"
 etichetta_colore = "Scostamento (MW)" if tipo_visualizzazione == "Valore Assoluto (MW)" else "Scostamento (%)"
 
-# Usiamo choropleth base (supportato da tutte le versioni di Plotly)
 fig = px.choropleth(
     df,
     geojson=geojson_data,
     locations="regione",
-    featureidkey="properties.reg_name", # Usa i nomi corretti di OpenPolis
+    featureidkey="properties.reg_name", # Chiave corretta OpenPolis
     color=colonna_colore,
     color_continuous_scale="RdYlGn",
     color_continuous_midpoint=0,
     scope="europe",
     hover_name="regione",
-    hover_data={"presidente": True, "delta_mw": True, "delta_perc": True, "regione": False}
+    hover_data={"presidente": True, "delta_mw": True, "delta_perc": True, "regione": False},
+    labels={
+        "delta_mw": "Scostamento (MW)",
+        "delta_perc": "Scostamento (%)",
+        "presidente": "Governatore"
+    }
 )
 
-# Questo comando è la magia: nasconde l'Europa e fa lo zoom perfetto sull'Italia
+# Ritaglia via l'Europa per concentrarsi solo sull'Italia
 fig.update_geos(fitbounds="locations", visible=False)
-
 fig.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0}, height=550)
 
 # Layout a colonne
@@ -123,7 +99,7 @@ col_map, col_details = st.columns([1.3, 1])
 with col_map:
     map_selection = st.plotly_chart(fig, use_container_width=True, on_select="rerun", selection_mode="points")
 
-# 7. Pannello Dettagli o Grafico Spread
+# 6. Pannello Dettagli Dinamico
 with col_details:
     selected_region = None
     if map_selection and "selection" in map_selection and map_selection["selection"]["points"]:
@@ -133,41 +109,34 @@ with col_details:
         row = df[df["regione"] == selected_region].iloc[0]
         st.markdown(f"### **Dettaglio: {row['regione']}**")
         st.write(f"👤 **Presidente:** {row['presidente']} (*{row['coalizione']}*)")
+        st.write("---")
         
         delta_val = row['delta_mw']
         if delta_val >= 0:
-            st.success(f"✅ **In anticipo:** `+{delta_val} MW` (+{row['delta_perc']}% sul target)")
+            st.success(f"**Avanzamento**\n\n✅ **In anticipo:** `+{delta_val} MW` (+{row['delta_perc']}% sul target)")
         else:
-            st.error(f"⚠️ **In ritardo:** `{delta_val} MW` ({row['delta_perc']}% sul target)")
+            st.error(f"**Avanzamento**\n\n⚠️ **In ritardo:** `{delta_val} MW` ({row['delta_perc']}% sul target)")
+        
+        st.write(f"📊 **Target progressivo:** {row['target_mw']} MW")
+        st.write(f"📈 **Installato netto:** {row['installato_mw']} MW")
             
     else:
-        st.markdown("### 📈 Spread Centrodestra vs Centrosinistra")
-        st.write("Andamento aggregato nel tempo dello scostamento in MW (Clicca su una regione per i dettagli singoli).")
-        
-        if df_storico is not None:
-            df_grouped = df_storico.groupby(['data_rilevazione', 'macro_area_politica'])['delta_mw'].sum().reset_index()
-            df_spread = df_grouped[df_grouped['macro_area_politica'].isin(['Centrodestra', 'Centrosinistra'])]
-            
-            fig_line = px.line(
-                df_spread, 
-                x='data_rilevazione', 
-                y='delta_mw', 
-                color='macro_area_politica',
-                color_discrete_map={"Centrodestra": "#1f77b4", "Centrosinistra": "#d62728"},
-                markers=True
-            )
-            fig_line.add_hline(y=0, line_dash="dash", line_color="black")
-            fig_line.update_layout(margin={"r": 0, "t": 10, "l": 0, "b": 0}, height=350)
-            st.plotly_chart(fig_line, use_container_width=True)
-        else:
-            st.warning("Dati storici non caricati. Controlla il file 'prova terna.xlsx'.")
+        st.markdown("### 👈 Come leggere i dati")
+        st.write("Clicca su una regione sulla mappa per vederne i numeri esatti.")
+        st.info("🟢 **Verde:** in anticipo sul target.")
+        st.warning("🔴 **Rosso:** in ritardo sul target.")
 
-# 8. Metriche Finali
+# 7. Metriche Finali
 st.markdown("---")
 st.subheader("⚖️ Bilancio dell'Avanzamento")
+st.write("Aggregazione dello scostamento complessivo (in MW) in base al colore politico della Giunta.")
 bilancio = df.groupby("macro_area_politica")["delta_mw"].sum()
 
 col1, col2, col3 = st.columns(3)
-col1.metric("🔵 Centrodestra", f"{bilancio.get('Centrodestra', 0)} MW")
-col2.metric("🔴 Centrosinistra", f"{bilancio.get('Centrosinistra', 0)} MW")
-col3.metric("⚪ Autonomisti", f"{bilancio.get('Autonomisti', 0)} MW")
+val_cdx = bilancio.get('Centrodestra', 0)
+val_csx = bilancio.get('Centrosinistra', 0)
+val_aut = bilancio.get('Autonomisti', 0)
+
+col1.metric("🔵 Centrodestra", f"{val_cdx} MW", delta="In anticipo" if val_cdx >= 0 else "In ritardo", delta_color="normal" if val_cdx >= 0 else "inverse")
+col2.metric("🔴 Centrosinistra", f"{val_csx} MW", delta="In anticipo" if val_csx >= 0 else "In ritardo", delta_color="normal" if val_csx >= 0 else "inverse")
+col3.metric("⚪ Autonomisti", f"{val_aut} MW", delta="In anticipo" if val_aut >= 0 else "In ritardo", delta_color="normal" if val_aut >= 0 else "inverse")
