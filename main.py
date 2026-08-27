@@ -94,24 +94,26 @@ tipo_visualizzazione = st.sidebar.radio(
 )
 
 # 6. Mappa Originale Funzionante
+# 6. Mappa Base (Universale e Anti-Crash)
 colonna_colore = "delta_mw" if tipo_visualizzazione == "Valore Assoluto (MW)" else "delta_perc"
 etichetta_colore = "Scostamento (MW)" if tipo_visualizzazione == "Valore Assoluto (MW)" else "Scostamento (%)"
 
-fig = px.choropleth_mapbox(
+# Usiamo choropleth base (supportato da tutte le versioni di Plotly)
+fig = px.choropleth(
     df,
     geojson=geojson_data,
     locations="regione",
-    featureidkey="properties.reg_name", # La chiave originale corretta
+    featureidkey="properties.reg_name", # Usa i nomi corretti di OpenPolis
     color=colonna_colore,
     color_continuous_scale="RdYlGn",
     color_continuous_midpoint=0,
-    mapbox_style="carto-positron",
-    zoom=4.8,
-    center={"lat": 41.9, "lon": 12.5},
-    opacity=0.8,
+    scope="europe",
     hover_name="regione",
     hover_data={"presidente": True, "delta_mw": True, "delta_perc": True, "regione": False}
 )
+
+# Questo comando è la magia: nasconde l'Europa e fa lo zoom perfetto sull'Italia
+fig.update_geos(fitbounds="locations", visible=False)
 
 fig.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0}, height=550)
 
