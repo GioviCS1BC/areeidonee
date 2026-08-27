@@ -18,10 +18,10 @@ st.markdown(
     "rispetto agli obiettivi vincolanti fissati per ciascuna regione."
 )
 
-# 2. Download dinamico del GeoJSON
+# 2. Download dinamico del GeoJSON (VERSIONE LEGGERA ANTI-CRASH)
 @st.cache_data
 def load_geojson():
-    url = "https://raw.githubusercontent.com/openpolis/geojson-italy/master/geojson/limits_IT_regions.geojson"
+    url = "https://raw.githubusercontent.com/stefanocudini/leaflet-geojson-selector/master/examples/italy-regions.json"
     response = requests.get(url)
     return response.json()
 
@@ -33,7 +33,7 @@ data = {
         "Abruzzo", "Basilicata", "Calabria", "Campania", "Emilia-Romagna", 
         "Friuli-Venezia Giulia", "Lazio", "Liguria", "Lombardia", "Marche", 
         "Molise", "Piemonte", "Puglia", "Sardegna", "Sicilia", "Toscana", 
-        "Trentino-Alto Adige/Südtirol", "Umbria", "Valle d'Aosta/Vallée d'Aoste", "Veneto"
+        "Trentino-Alto Adige", "Umbria", "Valle d'Aosta", "Veneto"
     ],
     "presidente": [
         "Marco Marsilio", "Vito Bardi", "Roberto Occhiuto", "Vincenzo De Luca", "Michele De Pascale",
@@ -99,7 +99,7 @@ tipo_visualizzazione = st.sidebar.radio(
     options=["Valore Assoluto (MW)", "Percentuale sul Target (%)"]
 )
 
-# 5. Costruzione Mappa Dinamica
+# 5. Costruzione Mappa Dinamica Leggera
 if tipo_visualizzazione == "Valore Assoluto (MW)":
     colonna_colore = "delta_mw"
     etichetta_colore = "Scostamento (MW)"
@@ -123,18 +123,15 @@ else:
         "regione": False
     }
 
-fig = px.choropleth_mapbox(
+fig = px.choropleth(
     df,
     geojson=geojson_data,
     locations="regione",
-    featureidkey="properties.reg_name",
+    featureidkey="properties.name", # Modificato per il nuovo GeoJSON
     color=colonna_colore,
     color_continuous_scale="RdYlGn",
     color_continuous_midpoint=0,
-    mapbox_style="carto-positron",
-    zoom=4.8,
-    center={"lat": 41.9, "lon": 12.5},
-    opacity=0.8,
+    scope="europe", # Limita il rendering all'Europa
     hover_name="regione",
     hover_data=hover_dati,
     labels={
@@ -142,6 +139,12 @@ fig = px.choropleth_mapbox(
         "delta_perc": "Scostamento (%)",
         "presidente": "Governatore"
     }
+)
+
+# Nasconde il resto della mappa centrando l'Italia
+fig.update_geos(
+    fitbounds="locations", 
+    visible=False
 )
 
 fig.update_layout(
