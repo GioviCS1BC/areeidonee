@@ -20,31 +20,21 @@ st.markdown(
 
 # 2. Download dinamico del GeoJSON (VERSIONE LEGGERA ANTI-CRASH)
 # 1. Caricamento GeoJSON Semplificato e Correzione Nomi
+
 @st.cache_data
 def load_geojson():
-    url = "https://raw.githubusercontent.com/stefanocudini/leaflet-geojson-selector/master/examples/italy-regions.json"
+    # URL di un GeoJSON ufficiale ma a bassa risoluzione (circa 400kb, sicuro per la memoria)
+    url = "https://gist.githubusercontent.com/datajournalism-it/489cb74d0ef80d501b1a/raw/963d5d9c22734451c107bf2ca1e8e4e9411604a1/regioni.geojson"
     geojson = requests.get(url).json()
     
-    # Dizionario per tradurre i nomi "sporchi" del JSON in quelli esatti del nostro DataFrame
-    mappa_correzione = {
-        "abruzzo": "Abruzzo", "basilicata": "Basilicata", "calabria": "Calabria",
-        "campania": "Campania", "emilia romagna": "Emilia-Romagna", "emilia-romagna": "Emilia-Romagna",
-        "friuli venezia giulia": "Friuli-Venezia Giulia", "friuli-venezia giulia": "Friuli-Venezia Giulia",
-        "lazio": "Lazio", "liguria": "Liguria", "lombardia": "Lombardia",
-        "marche": "Marche", "molise": "Molise", "piemonte": "Piemonte",
-        "puglia": "Puglia", "sardegna": "Sardegna", "sicilia": "Sicilia",
-        "toscana": "Toscana", "trentino alto adige": "Trentino-Alto Adige",
-        "trentino-alto adige": "Trentino-Alto Adige", "umbria": "Umbria",
-        "valle d'aosta": "Valle d'Aosta", "valle d aosta": "Valle d'Aosta", "veneto": "Veneto"
-    }
-    
-    # Cicliamo dentro il file geografico e sovrascriviamo i nomi con quelli corretti
+    # Assicuriamoci che l'unico nome critico combaci con il nostro DataFrame
     for feature in geojson["features"]:
-        nome_json = feature["properties"]["name"].lower().strip()
-        if nome_json in mappa_correzione:
-            feature["properties"]["name"] = mappa_correzione[nome_json]
+        if feature["properties"]["NOME_REG"] == "Friuli Venezia Giulia":
+            feature["properties"]["NOME_REG"] = "Friuli-Venezia Giulia"
             
     return geojson
+
+geojson_data = load_geojson()
 
 # 3. Struttura Dati (Tabella Terna)
 data = {
