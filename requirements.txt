@@ -2,5 +2,6 @@ streamlit
 pandas
 plotly
 requests
+prova terna
 
 
